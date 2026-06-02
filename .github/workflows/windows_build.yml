@@ -1,0 +1,35 @@
+name: Build Windows Wallet
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install compiler tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install build-essential libtool autotools-dev automake pkg-config bsdmainutils curl git -y
+        sudo apt-get install g++-mingw-w64-x86-64-posix -y
+
+    - name: Build depends system
+      run: |
+        cd depends
+        make HOST=x86_64-w64-mingw32 NO_QT=1 -j$(nproc)
+
+    - name: Compile Wallet with CMake
+      run: |
+        cmake -B build --toolchain depends/x86_64-w64-mingw32/toolchain.cmake -DGUI=OFF -DBUILD_TESTS=OFF
+        cmake --build build -j$(nproc)
+
+    - name: Upload Windows Executables
+      uses: actions/upload-artifact@v3
+      with:
+        name: NerdCoin-Windows-Binaries
+        path: build/src/
